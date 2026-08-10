@@ -5,11 +5,12 @@ mod output;
 mod settings;
 
 use crate::{
-	input::{TongueInput, TongueInputMessage},
-	output::{TongueDirection, TongueEmulationPacket},
+	input::{FaceOscMessage, FaceState},
+	output::{TongueDir, TongueOscPacket},
 	settings::Settings,
 };
 use anyhow::Context;
+use rosc::OscPacket;
 use std::{io::Read, net::UdpSocket, process::ExitCode};
 
 fn main() -> ExitCode {
@@ -23,6 +24,16 @@ fn main() -> ExitCode {
 	ExitCode::SUCCESS
 }
 
+struct TongueEmulation {
+	settings: Settings,
+	face: FaceState,
+	socket: UdpSocket,
+	reusable_packet: TongueOscPacket,
+	decode_buf: Vec<u8>,
+	encode_buf: Vec<u8>,
+	last_output: TongueDir,
+}
+
 fn try_main() -> anyhow::Result<()> {
 	let settings = Settings::load()
 		.context("failed to parse arguments\nusage: [listening socket] [sending socket]")?;
@@ -32,34 +43,26 @@ fn try_main() -> anyhow::Result<()> {
 	let socket = UdpSocket::bind(settings.listen_socket)
 		.with_context(|| format!("failed to create socket at {}", settings.listen_socket))?;
 
-	let mut global_state = GlobalState {
+	let mut tongue_emulation = TongueEmulation {
 		settings,
 		socket,
-		packet: TongueEmulationPacket::new(),
+		face: FaceState::default(),
+		reusable_packet: TongueOscPacket::new(),
+		last_output: TongueDir::default(),
 		decode_buf: vec![0u8; rosc::decoder::MTU],
-		input: TongueInput::default(),
-		last_output: TongueDirection::default(),
+		encode_buf: Vec::new(),
 	};
 
-	log::info!("Starting");
+	log::info!("Started");
 
 	loop {
-		if let Err(err) = global_state.handle_osc() {
+		if let Err(err) = tongue_emulation.handle_osc() {
 			log::error!("{err:?}");
 		}
 	}
 }
 
-struct GlobalState {
-	settings: Settings,
-	socket: UdpSocket,
-	packet: TongueEmulationPacket,
-	decode_buf: Vec<u8>,
-	input: TongueInput,
-	last_output: TongueDirection,
-}
-
-impl GlobalState {
+impl TongueEmulation {
 	fn handle_osc(&mut self) -> anyhow::Result<()> {
 		let (data_size, _) = self
 			.socket
@@ -67,9 +70,17 @@ impl GlobalState {
 			.context("failed to receive data from socket")?;
 
 		let (_, incoming_packet) = rosc::decoder::decode_udp(&self.decode_buf[..data_size])
-			.context("failed to decode OSC from data")?;
+			.context("failed to decode OSC")?;
 
-		let msg = match TongueInputMessage::filter_from(incoming_packet) {
+		let osc_msg = match incoming_packet {
+			OscPacket::Message(msg) => msg,
+			OscPacket::Bundle(bundle) => {
+				// vrc doesn't seem to ever send bundles
+				anyhow::bail!("received bundle which is currently unimplemented:\n{bundle:?}")
+			},
+		};
+
+		let face_msg = match FaceOscMessage::filter_from(osc_msg) {
 			None => return Ok(()),
 			Some(msg) => {
 				log::trace!("received {msg:?}");
@@ -77,50 +88,47 @@ impl GlobalState {
 			},
 		};
 
-		match msg {
-			TongueInputMessage::JawOpen(f) => self.input.jaw_open = f,
-			TongueInputMessage::JawX(f) => self.input.jaw_x = f,
-			TongueInputMessage::LipPucker(f) => self.input.lip_pucker = f,
-			TongueInputMessage::TongueOut(f) => {
-				self.input.tongue_out = f;
-				if f == 0.0 {
-					return self.update_tongue(TongueDirection::default());
-				}
+		self.face.update_with(face_msg);
+
+		match face_msg {
+			FaceOscMessage::TongueOut(0.0) => {
+				return self.send_tongue_update(TongueDir::default());
 			},
-			TongueInputMessage::AvatarChange => {
-				self.input = TongueInput::default();
-				self.last_output = TongueDirection::default();
+			FaceOscMessage::AvatarChange => {
+				self.last_output = TongueDir::default();
 				return Ok(());
 			},
+			_ => (),
 		};
 
-		if self.input.tongue_out == 0.0 {
+		if self.face.tongue_out == 0.0 {
 			return Ok(());
 		}
 
-		let mut dir = TongueDirection {
-			x: self.input.jaw_x * 4.0,
-			y: self.input.lip_pucker * 1.333 - self.input.jaw_open * 2.0,
+		let mut dir = TongueDir {
+			x: self.face.jaw_x * 4.0,
+			y: self.face.lip_pucker * 1.333 - self.face.jaw_open * 2.0,
 		};
 
-		dir.x = dir.x.clamp(-1.0, 1.0) * self.input.tongue_out;
-		dir.y = dir.y.clamp(-1.0, 1.0) * self.input.tongue_out;
+		dir.x = dir.x.clamp(-1.0, 1.0) * self.face.tongue_out;
+		dir.y = dir.y.clamp(-1.0, 1.0) * self.face.tongue_out;
 
-		self.update_tongue(dir)?;
+		self.send_tongue_update(dir)?;
 
 		Ok(())
 	}
 
-	fn update_tongue(&mut self, dir: TongueDirection) -> anyhow::Result<()> {
+	fn send_tongue_update(&mut self, dir: TongueDir) -> anyhow::Result<()> {
 		if dir == self.last_output {
 			return Ok(());
 		}
 		log::trace!(x = dir.x, y = dir.y; "updating tongue");
-		self.packet.set_dir(dir);
-		let outgoing_msg =
-			rosc::encoder::encode(self.packet.as_ref()).context("failed to encode packet")?;
+		self.reusable_packet.set_dir(dir);
+		self.encode_buf.clear();
+		rosc::encoder::encode_into(self.reusable_packet.as_ref(), &mut self.encode_buf)
+			.context("failed to encode packet")?;
 		self.socket
-			.send_to(&outgoing_msg, self.settings.send_socket)
+			.send_to(&self.encode_buf, self.settings.send_socket)
 			.with_context(|| format!("failed to send packet to {}", self.settings.send_socket))?;
 		self.last_output = dir;
 		Ok(())
