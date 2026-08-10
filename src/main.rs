@@ -89,6 +89,7 @@ impl GlobalState {
 			},
 			TongueInputMessage::AvatarChange => {
 				self.input = TongueInput::default();
+				self.last_output = TongueDirection::default();
 				return Ok(());
 			},
 		};
@@ -104,15 +105,16 @@ impl GlobalState {
 
 		dir.x = dir.x.clamp(-1.0, 1.0) * self.input.tongue_out;
 		dir.y = dir.y.clamp(-1.0, 1.0) * self.input.tongue_out;
-		if self.last_output != dir {
-			self.last_output = dir;
-			self.update_tongue(dir)?;
-		}
+
+		self.update_tongue(dir)?;
 
 		Ok(())
 	}
 
 	fn update_tongue(&mut self, dir: TongueDirection) -> anyhow::Result<()> {
+		if dir == self.last_output {
+			return Ok(());
+		}
 		log::trace!(x = dir.x, y = dir.y; "updating tongue");
 		self.packet.set_dir(dir);
 		let outgoing_msg =
@@ -120,6 +122,7 @@ impl GlobalState {
 		self.socket
 			.send_to(&outgoing_msg, self.settings.send_socket)
 			.with_context(|| format!("failed to send packet to {}", self.settings.send_socket))?;
+		self.last_output = dir;
 		Ok(())
 	}
 }
