@@ -1,0 +1,20 @@
+[package]
+name = "tongue-emulation"
+version = "1.0.0"
+description = "Emulate tongue movement in VRChat with other parts of your face"
+license = "MIT"
+authors = ["Purpzie"]
+repository = "https://github.com/Purpzie/TongueEmulation"
+include = ["src", "README.md", "LICENSE"]
+edition = "2024"
+publish = false
+
+[profile.release]
+codegen-units = 1
+lto = true
+
+[dependencies]
+anyhow = "1.0.104"
+log = {version = "0.4.33", features = ["std", "kv", "max_level_debug"]}
+rosc = "0.11.4"
+tinylog = {version = "4.0.3", features = ["timestamps", "detect-timezone"]}

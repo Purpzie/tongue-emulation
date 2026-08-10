@@ -1,0 +1,38 @@
+name: Release
+on:
+  release:
+    type: published
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+jobs:
+  release:
+    permissions:
+      contents: write
+    needs: ci
+    strategy:
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+        include:
+          - os: windows-latest
+            filename: ./target/release/tongue-emulation.exe#Windows
+          - os: ubuntu-latest
+            filename: ./target/release/tongue-emulation#Linux
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v7
+      - name: Install rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build
+        run: cargo build --release --locked
+      - name: Upload
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${GITHUB_REF#refs/tags/} ${{ matrix.filename }}
