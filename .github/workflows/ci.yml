@@ -2,7 +2,17 @@ name: CI
 on:
   push:
     branches: ["*"] # ignore pushes that are only tags
+    paths:
+      - src/**
+      - .rustfmt.toml
+      - Cargo.lock
+      - Cargo.toml
   pull_request:
+    paths:
+      - src/**
+      - .rustfmt.toml
+      - Cargo.lock
+      - Cargo.toml
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0

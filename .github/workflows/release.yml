@@ -1,13 +1,15 @@
 name: Release
 on:
-  release:
-    type: published
+  push:
+    branches:
+      - main
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
 jobs:
   release:
+    if: github.ref_type == 'tag'
     permissions:
       contents: write
     strategy:
