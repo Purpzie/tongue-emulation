@@ -10,7 +10,6 @@ jobs:
   release:
     permissions:
       contents: write
-    needs: ci
     strategy:
       matrix:
         os:
