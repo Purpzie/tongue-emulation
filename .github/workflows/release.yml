@@ -25,16 +25,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Build
         run: cargo build --release --locked
-      - name: Attest
-        uses: actions/attest@v4
-        with:
-          subject-path: target/release/tongue-emulation.exe
       - name: Get version
         id: version
-        run: |
-          PURPZIE_PKG_VERSION=${{ github.event.inputs.version }}
-          PURPZIE_PKG_VERSION=${PURPZIE_PKG_VERSION:-"$(cargo pkgid | cut -d "#" -f2)"}
-          echo "PKG_VERSION=$PURPZIE_PKG_VERSION" >> "$GITHUB_OUTPUT"
+        run: echo "PKG_VERSION=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
       - name: Upload to draft release
         uses: softprops/action-gh-release@v3
         with:
@@ -43,3 +36,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.PKG_VERSION }}
           files: |
             target/release/tongue-emulation.exe
+      - name: Attest
+        uses: actions/attest@v4
+        with:
+          subject-path: target/release/tongue-emulation.exe
