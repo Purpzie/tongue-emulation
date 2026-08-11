@@ -1,6 +1,11 @@
 name: Release
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        required: false
+        type: string
+        description: Override version (usually for testing)
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
@@ -25,11 +30,16 @@ jobs:
         with:
           subject-path: target/release/tongue-emulation.exe
       - name: Get version
-        run: echo "PURPZIE_PKG_VERSION=$(cargo pkgid | cut -d "#" -f2)" >> $GITHUB_ENV
+        id: version
+        run: |
+          PURPZIE_PKG_VERSION=${{ github.event.inputs.version }}
+          PURPZIE_PKG_VERSION=${PURPZIE_PKG_VERSION:-"$(cargo pkgid | cut -d "#" -f2)"}
+          echo "PKG_VERSION=$PURPZIE_PKG_VERSION" >> "$GITHUB_OUTPUT"
       - name: Upload to draft release
         uses: softprops/action-gh-release@v3
         with:
           draft: true
-          tag_name: ${{ env.PURPZIE_PKG_VERSION }}
+          name: ${{ steps.version.outputs.PKG_VERSION }}
+          tag_name: ${{ steps.version.outputs.PKG_VERSION }}
           files: |
             target/release/tongue-emulation.exe
