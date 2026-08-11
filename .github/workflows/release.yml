@@ -32,4 +32,6 @@ jobs:
         with:
           subject-path: target/release/tongue-emulation.exe
       - name: Edit draft release # for some reason the previous step won't set these even when it's told to???
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: gh release edit "$(echo '${{steps.draft.outputs.url}}' | cut -d '/' -f8)" -t "$(cargo pkgid | cut -d '#' -f2)" --tag "$(cargo pkgid | cut -d '#' -f2)"
