@@ -1,11 +1,6 @@
 name: Release
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        required: false
-        type: string
-        description: Override version (usually for testing)
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
@@ -25,18 +20,16 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Build
         run: cargo build --release --locked
-      - name: Get version
-        id: version
-        run: echo "PKG_VERSION=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
       - name: Upload to draft release
+        id: draft
         uses: softprops/action-gh-release@v3
         with:
           draft: true
-          name: ${{ steps.version.outputs.PKG_VERSION }}
-          tag_name: ${{ steps.version.outputs.PKG_VERSION }}
           files: |
             target/release/tongue-emulation.exe
       - name: Attest
         uses: actions/attest@v4
         with:
           subject-path: target/release/tongue-emulation.exe
+      - name: Edit draft release # for some reason the previous step won't set these even when it's told to???
+        run: gh release edit "$(echo '${{steps.draft.outputs.url}}' | cut -d '/' -f8)" -t "$(cargo pkgid | cut -d '#' -f2)" --tag "$(cargo pkgid | cut -d '#' -f2)"
