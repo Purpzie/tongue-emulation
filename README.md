@@ -20,6 +20,14 @@ Currently, this only works for avatars with these parameters (such as [Jerry's T
 
 The latest version of [Pawlygon's Template](https://github.com/PawlygonStudio/VRC-Facetracking) works, but you'll need to [edit the avatar's OSC config](https://docs.vrchat.com/docs/osc-avatar-parameters#avatar-parameters--config-files) to remap parameters to the names above.
 
+## Optional Puppet
+Avatars can override emulation with a two axis puppet.
+- Parameter: `TongueEmulation/PuppetActive` (bool)
+- Horizontal: `TongueEmulation/PuppetX` (float)
+- Vertical: `TongueEmulation/PuppetY` (float)
+
+Don't mark them as synced!
+
 ## Configuration
 VRChat's OSC sockets are used by default.
 You can change them by passing these arguments:

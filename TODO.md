@@ -10,4 +10,4 @@ None of these are guaranteed, but they'd be nice to have.
   - Tongue down currently uses jaw open. What should it use instead? Or maybe it would just need more to activate?
   - VRCFT writes to tongue out already. It might be possible to edit the avatar's config to send VRCFT to a dummy parameter, which then gets read, modified, and written to the real ones. This would break your tongue if TongueEmu isn't running, though...
 - [ ] Customizable parameter remapping
-- [ ] Optional ingame avatar menu for extra control and puppeting
+- [x] Optional ingame avatar menu for extra control and puppeting
