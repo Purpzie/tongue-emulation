@@ -9,23 +9,13 @@ env:
   CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
 jobs:
   release:
+    runs-on: windows-latest
     if: github.ref_type == 'tag'
     permissions:
       contents: write
-    strategy:
-      matrix:
-        os:
-          - windows-latest
-          - ubuntu-latest
-        include:
-          - os: windows-latest
-            filename: ./target/release/tongue-emulation.exe#Windows
-          - os: ubuntu-latest
-            filename: ./target/release/tongue-emulation#Linux
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     steps:
       - name: Clone repository
         uses: actions/checkout@v7
@@ -33,7 +23,13 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Build
         run: cargo build --release --locked
-      - name: Upload
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${GITHUB_REF#refs/tags/} ${{ matrix.filename }}
+      - name: Attest
+        uses: actions/attest@v4
+        with:
+          subject-path: target/release/tongue-emulation.exe
+      - name: Create draft release
+        uses: softprops/action-gh-release@v3
+        with:
+          draft: true
+          files: |
+            target/release/tongue-emulation.exe
