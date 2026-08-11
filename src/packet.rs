@@ -33,7 +33,7 @@ impl TongueOscPacket {
 	/// Update the packet to represent this tongue state.
 	pub fn set(&mut self, state: TongueState) {
 		fn update_axis(packets: &mut [OscPacket; PARAM_NAMES.len() / 2], value: f32) {
-			for (packet, new_value) in packets.into_iter().zip({
+			for (packet, new_value) in packets.iter_mut().zip({
 				let binary = ((value.abs() * 8.0) as u8).min(7);
 				[
 					OscType::Float(value),
