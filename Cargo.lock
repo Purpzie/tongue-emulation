@@ -190,9 +190,9 @@ dependencies = [
 
 [[package]]
 name = "tinylog"
-version = "4.0.4"
+version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "633dafb9b242cb74c9125aaed67e1f721bad0b2ca08b92ba784d5ad3f37093da"
+checksum = "429f93d5c54065ea4ab1a74711631c32bb5335690b7d8589a07e282ffde1d558"
 dependencies = [
  "itoa",
  "log",

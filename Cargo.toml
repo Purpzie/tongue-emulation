@@ -15,6 +15,6 @@ lto = true
 
 [dependencies]
 anyhow = "1.0.104"
-log = {version = "0.4.33", features = ["std", "kv", "max_level_debug"]}
+log = {version = "0.4.33", features = ["std", "kv", "release_max_level_info"]}
 rosc = "0.11.4"
-tinylog = {version = "4.0.3", features = ["timestamps", "detect-timezone"]}
+tinylog = {version = "5.0.0", features = ["log", "timestamps"]}

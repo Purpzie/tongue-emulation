@@ -109,7 +109,7 @@ impl TongueEmulation {
 
 fn main() -> ExitCode {
 	log::set_max_level(log::LevelFilter::Trace); // control this from cargo features
-	log::set_boxed_logger(Box::new(tinylog::Logger::default())).unwrap();
+	tinylog::setup_all().unwrap();
 	if let Err(err) = try_main() {
 		log::error!("{err:?}\n\nPress enter to exit...");
 		let _ = std::io::stdin().read(&mut [0u8]);
